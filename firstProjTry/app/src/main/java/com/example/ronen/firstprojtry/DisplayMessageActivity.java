@@ -1,10 +1,19 @@
 package com.example.ronen.firstprojtry;
 
 import android.content.Intent;
+import android.graphics.Color;
+import android.graphics.drawable.Drawable;
+import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.Toolbar;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.EditText;
+import android.widget.Gallery;
+import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 
 import java.io.BufferedReader;
@@ -16,16 +25,52 @@ import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import android.widget.LinearLayout.LayoutParams;
+
 
 public class DisplayMessageActivity extends AppCompatActivity {
-    public BufferedReader reader;
+    private BufferedReader reader;
     private Socket clientSoc;
     private String name;
-    public PrintWriter out;
+    private PrintWriter out;
+    private LinearLayout mainLayout;
+    private ScrollView scrollLayout;
+//    private RelativeLayout thisLayout;
+
+    protected void addMsg(String msg)
+    {
+
+        TextView textView1=new TextView(this);
+        textView1.setText(msg);
+        textView1.setLayoutParams(new LayoutParams(LayoutParams.WRAP_CONTENT,LayoutParams.WRAP_CONTENT));
+        textView1.setBackgroundResource(R.drawable.rounded_corner);
+        textView1.setPadding(20,20,20,20);
+        textView1.setTextColor(Color.rgb(153,153,255));
+        mainLayout.addView(textView1);
+        scrollLayout.post(new Runnable() {
+            @Override
+            public void run() {
+
+                scrollLayout.scrollTo(0, scrollLayout.getBottom());
+
+            }
+        });
+    }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_display_message);
+        setTitle("Chat room");
+        setContentView(R.layout.chat_window);
+        Toolbar myToolbar = (Toolbar) findViewById(R.id.my_toolbar);
+        setSupportActionBar(myToolbar);
+
+        ScrollView tmpView=(ScrollView) findViewById(R.id.scrollLayout);
+        scrollLayout=tmpView;
+        LinearLayout extraLayout=new LinearLayout(this);
+        extraLayout.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT,LayoutParams.MATCH_PARENT));
+        extraLayout.setOrientation(LinearLayout.VERTICAL);
+        tmpView.addView(extraLayout);
+        mainLayout=extraLayout;
         Intent intent= getIntent();
         String ip=intent.getStringExtra("IP");
         name=intent.getStringExtra("USERNAME");
@@ -43,8 +88,10 @@ public class DisplayMessageActivity extends AppCompatActivity {
     }
     public void sendMessage(View view)
     {
-        EditText edText=(EditText) findViewById(R.id.sendText);
+        EditText edText=(EditText) findViewById(R.id.msgHolder);
         String msg=edText.getText().toString();
+        addMsg(name+": "+msg);
+        edText.setText(null);
         MsgHandler sendMsg=new MsgHandler(name+": "+msg);
         Thread tmpThread=new Thread(sendMsg);
         tmpThread.start();
@@ -64,14 +111,12 @@ public class DisplayMessageActivity extends AppCompatActivity {
     }
     public class MsgPrinter implements Runnable {
         private String port;
-        private TextView thisText;
         private String ip;
         private String output;
 
         public MsgPrinter(String ip,String port) throws IOException {
             this.ip=ip;
             this.port=port;
-            thisText=(TextView) findViewById(R.id.sendText);
         }
 
         @Override
@@ -99,7 +144,7 @@ public class DisplayMessageActivity extends AppCompatActivity {
                 }
                 runOnUiThread(new Runnable(){
                     public void run() {
-                        thisText.setText(output);
+                        addMsg(output);
                     }
                  });
             }
