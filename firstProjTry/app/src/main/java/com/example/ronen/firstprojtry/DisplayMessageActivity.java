@@ -2,13 +2,11 @@ package com.example.ronen.firstprojtry;
 
 import android.content.Intent;
 import android.graphics.Color;
-import android.graphics.drawable.Drawable;
-import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
+import android.view.Gravity;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.Gallery;
 import android.widget.LinearLayout;
@@ -33,20 +31,35 @@ public class DisplayMessageActivity extends AppCompatActivity {
     private Socket clientSoc;
     private String name;
     private PrintWriter out;
-    private LinearLayout mainLayout;
+    int prevTextId=0;
     private ScrollView scrollLayout;
-//    private RelativeLayout thisLayout;
+    private RelativeLayout relativeLayout;
 
-    protected void addMsg(String msg)
-    {
+    protected void addMsg(String msg,int isMe)
+    { //isme==1 means this client sent the msg
 
         TextView textView1=new TextView(this);
         textView1.setText(msg);
-        textView1.setLayoutParams(new LayoutParams(LayoutParams.WRAP_CONTENT,LayoutParams.WRAP_CONTENT));
+        RelativeLayout.LayoutParams llp = new RelativeLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+        if (prevTextId!=0)
+        {
+            llp.addRule(RelativeLayout.BELOW,prevTextId);
+        }
+        if (isMe==1)
+        {
+            llp.addRule(RelativeLayout.ALIGN_PARENT_LEFT);
+        }
+        else
+        {
+            llp.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
+        }
+        textView1.setId(prevTextId+1);
+        prevTextId++;
+        textView1.setLayoutParams(llp);
         textView1.setBackgroundResource(R.drawable.rounded_corner);
         textView1.setPadding(20,20,20,20);
-        textView1.setTextColor(Color.rgb(153,153,255));
-        mainLayout.addView(textView1);
+        textView1.setTextColor(Color.rgb(0,0,51));
+        relativeLayout.addView(textView1);
         scrollLayout.post(new Runnable() {
             @Override
             public void run() {
@@ -61,23 +74,20 @@ public class DisplayMessageActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setTitle("Chat room");
         setContentView(R.layout.chat_window);
-        Toolbar myToolbar = (Toolbar) findViewById(R.id.my_toolbar);
+        Toolbar myToolbar = (Toolbar) findViewById(R.id.DisplayBar);
         setSupportActionBar(myToolbar);
-
+        myToolbar.setBackgroundResource(R.color.colorPrimaryDark);
         ScrollView tmpView=(ScrollView) findViewById(R.id.scrollLayout);
         scrollLayout=tmpView;
-        LinearLayout extraLayout=new LinearLayout(this);
-        extraLayout.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT,LayoutParams.MATCH_PARENT));
-        extraLayout.setOrientation(LinearLayout.VERTICAL);
-        tmpView.addView(extraLayout);
-        mainLayout=extraLayout;
+        RelativeLayout relLayout=new RelativeLayout(this);
+        relLayout.setLayoutParams(new LayoutParams(LayoutParams.MATCH_PARENT,LayoutParams.WRAP_CONTENT));
+        relLayout.setPadding(16,16,16,16);
+        relativeLayout=relLayout;
+        tmpView.addView(relLayout);
         Intent intent= getIntent();
         String ip=intent.getStringExtra("IP");
         name=intent.getStringExtra("USERNAME");
         String port=intent.getStringExtra("PORT");
-
-     /*   ConnectivityManager connMgr=(ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-        NetworkInfo networkInf=connMgr.getActiveNetworkInfo();*/
         try {
             MsgPrinter sockReader=new MsgPrinter(ip,port);
             Thread stamThread=new Thread(sockReader);
@@ -90,9 +100,10 @@ public class DisplayMessageActivity extends AppCompatActivity {
     {
         EditText edText=(EditText) findViewById(R.id.msgHolder);
         String msg=edText.getText().toString();
-        addMsg(name+": "+msg);
+        addMsg(name+":\r\n "+msg,1);
+
         edText.setText(null);
-        MsgHandler sendMsg=new MsgHandler(name+": "+msg);
+        MsgHandler sendMsg=new MsgHandler(name+":\r\n "+msg);
         Thread tmpThread=new Thread(sendMsg);
         tmpThread.start();
     }
@@ -144,7 +155,7 @@ public class DisplayMessageActivity extends AppCompatActivity {
                 }
                 runOnUiThread(new Runnable(){
                     public void run() {
-                        addMsg(output);
+                        addMsg(output,0);
                     }
                  });
             }

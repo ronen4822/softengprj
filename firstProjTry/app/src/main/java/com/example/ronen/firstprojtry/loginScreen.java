@@ -1,8 +1,6 @@
 package com.example.ronen.firstprojtry;
 
-import android.app.ActionBar;
 import android.content.Intent;
-import android.os.Build;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
@@ -17,8 +15,9 @@ public class loginScreen extends AppCompatActivity {
 
         setTitle("Login");
         setContentView(R.layout.activity_login_screen);
-        Toolbar myToolbar = (Toolbar) findViewById(R.id.my_toolbar);
+        Toolbar myToolbar = (Toolbar) findViewById(R.id.loginToolbar);
         setSupportActionBar(myToolbar);
+        myToolbar.setBackgroundResource(R.color.colorPrimaryDark);
 
     }
     public void sendMsg(View view)
