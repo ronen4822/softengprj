@@ -31,7 +31,7 @@ public class DisplayMessageActivity extends AppCompatActivity {
     private Socket clientSoc;
     private String name;
     private PrintWriter out;
-    int prevTextId=0;
+    private int prevTextId=0;
     private ScrollView scrollLayout;
     private RelativeLayout relativeLayout;
 
@@ -55,6 +55,7 @@ public class DisplayMessageActivity extends AppCompatActivity {
         }
         textView1.setId(prevTextId+1);
         prevTextId++;
+        llp.setMargins(0,10,0,0);
         textView1.setLayoutParams(llp);
         textView1.setBackgroundResource(R.drawable.rounded_corner);
         textView1.setPadding(20,20,20,20);
