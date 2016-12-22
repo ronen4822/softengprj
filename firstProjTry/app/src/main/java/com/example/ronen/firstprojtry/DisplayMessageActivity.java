@@ -1,15 +1,14 @@
 package com.example.ronen.firstprojtry;
 
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
-import android.view.Gravity;
 import android.view.View;
 import android.widget.EditText;
-import android.widget.Gallery;
-import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -34,10 +33,11 @@ public class DisplayMessageActivity extends AppCompatActivity {
     private int prevTextId=0;
     private ScrollView scrollLayout;
     private RelativeLayout relativeLayout;
+    private Object mutex;
 
+    //check for heartbeats
     protected void addMsg(String msg,int isMe)
-    { //isme==1 means this client sent the msg
-
+    {
         TextView textView1=new TextView(this);
         textView1.setText(msg);
         RelativeLayout.LayoutParams llp = new RelativeLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
@@ -55,7 +55,6 @@ public class DisplayMessageActivity extends AppCompatActivity {
         }
         textView1.setId(prevTextId+1);
         prevTextId++;
-        llp.setMargins(0,10,0,0);
         textView1.setLayoutParams(llp);
         textView1.setBackgroundResource(R.drawable.rounded_corner);
         textView1.setPadding(20,20,20,20);
@@ -64,9 +63,7 @@ public class DisplayMessageActivity extends AppCompatActivity {
         scrollLayout.post(new Runnable() {
             @Override
             public void run() {
-
                 scrollLayout.scrollTo(0, scrollLayout.getBottom());
-
             }
         });
     }
@@ -85,16 +82,16 @@ public class DisplayMessageActivity extends AppCompatActivity {
         relLayout.setPadding(16,16,16,16);
         relativeLayout=relLayout;
         tmpView.addView(relLayout);
+
         Intent intent= getIntent();
-        String ip=intent.getStringExtra("IP");
-        name=intent.getStringExtra("USERNAME");
-        String port=intent.getStringExtra("PORT");
+        String id=intent.getStringExtra("USERID");
+        String password=intent.getStringExtra("PASSWORD");
+
         try {
-            MsgPrinter sockReader=new MsgPrinter(ip,port);
-            Thread stamThread=new Thread(sockReader);
-            stamThread.start();
+            MsgPrinter sockReader=new MsgPrinter(id,password);
+            Thread readFromSoc=new Thread(sockReader);
+            readFromSoc.start();
         } catch (IOException e) {
-            e.printStackTrace();
         }
     }
     public void sendMessage(View view)
@@ -104,7 +101,7 @@ public class DisplayMessageActivity extends AppCompatActivity {
         addMsg(name+":\r\n "+msg,1);
 
         edText.setText(null);
-        MsgHandler sendMsg=new MsgHandler(name+":\r\n "+msg);
+        MsgHandler sendMsg=new MsgHandler(name+":\r\n "+msg+(char)194);
         Thread tmpThread=new Thread(sendMsg);
         tmpThread.start();
     }
@@ -118,51 +115,98 @@ public class DisplayMessageActivity extends AppCompatActivity {
         @Override
         public void run()
         {
-            out.println(msg);
+            out.print(msg);
+            out.flush();
         }
     }
     public class MsgPrinter implements Runnable {
-        private String port;
-        private String ip;
+        private String id;
+        private String pw;
         private String output;
-
-        public MsgPrinter(String ip,String port) throws IOException {
-            this.ip=ip;
-            this.port=port;
+        private String tmpString;
+        public MsgPrinter(String id,String pw) throws IOException {
+            this.id=id;
+            this.pw=pw;
+            this.output="";
         }
-
-        @Override
         public void run() {
             InetAddress serverAdd= null;
             try {
-                serverAdd = InetAddress.getByName(ip);
-            } catch (UnknownHostException e) {
-                e.printStackTrace();
-            }
-            try {
-                clientSoc = new Socket(serverAdd, Integer.parseInt(port));
+                serverAdd = InetAddress.getByName("192.168.1.28");
+                clientSoc = new Socket(serverAdd, 55555);
                 reader = new BufferedReader(new InputStreamReader(
                         clientSoc.getInputStream()));
                 OutputStream ronen = clientSoc.getOutputStream();
                 out=new PrintWriter(new OutputStreamWriter(ronen),true);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            while (true) {
-                try {
-                    output = reader.readLine();
-                } catch (IOException e) {
-                    e.printStackTrace();
+                out.println(id);
+                out.println(pw);
+                String answer=reader.readLine();
+                if (answer.equals("Access denied"))
+                {
+                    out.close();
+                    reader.close();
+                    clientSoc.close();
+                    //display an error and move to previous activity
+                    runOnUiThread(new Runnable() {
+                        public void run() {
+                            new AlertDialog.Builder(DisplayMessageActivity.this)
+                                    .setTitle("ERROR")
+                                    .setMessage("Invalid username or password... returning to login screen")
+                                    .setCancelable(false)
+                                    .setPositiveButton("ok", new DialogInterface.OnClickListener() {
+                                        @Override
+                                        public void onClick(DialogInterface dialog, int which) {
+                                            Intent intent = new Intent(getApplicationContext(), loginScreen.class);
+                                            startActivity(intent);
+                                        }
+                                    }).show();
+
+                        }
+                    });
+                    return;
+
                 }
-                runOnUiThread(new Runnable(){
-                    public void run() {
-                        addMsg(output,0);
+                else {
+                    name = answer;
+                    while (true) {
+                        try {
+                            output="";
+                            char tmp;
+                            int weirdChar=194;
+                            while ((tmp = (char) reader.read()) != (char) weirdChar) {
+                                output += tmp;
+                            }
+                            tmpString=output;
+                        } catch (IOException e) {
+                        }
+                        runOnUiThread(new Runnable() {
+                            public void run() {
+                                addMsg(tmpString, 0);
+                            }
+                        });
+
                     }
-                 });
+                }
+            } catch (IOException e) {
+                //display an error and move to previous activity
+                runOnUiThread(new Runnable() {
+                    public void run() {
+                        new AlertDialog.Builder(DisplayMessageActivity.this)
+                                .setTitle("ERROR")
+                                .setMessage("Connection failed")
+                                .setCancelable(false)
+                                .setPositiveButton("ok", new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        Intent intent = new Intent(getApplicationContext(), loginScreen.class);
+                                        startActivity(intent);
+                                    }
+                                }).show();
+
+                    }
+                });
+                return;
             }
         }
-
     }
-
-
 }

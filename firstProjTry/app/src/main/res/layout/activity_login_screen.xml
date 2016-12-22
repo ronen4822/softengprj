@@ -17,28 +17,20 @@
         android:theme="@style/ThemeOverlay.AppCompat.ActionBar"
         app:popupTheme="@style/ThemeOverlay.AppCompat.Light"/>
 
-    <EditText android:id="@+id/enterName"
+    <EditText android:id="@+id/enterID"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp"
-        android:hint="@string/enterName"
-        android:inputType="text"/>
-
-    <EditText android:id="@+id/enterIP"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
-        android:hint="@string/enterIP"
-        android:maxLines="1"
-        android:inputType="number|numberDecimal"
-        android:digits="0123456789."/>
-    <EditText android:id="@+id/enterPort"
-        android:layout_marginTop="20dp"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="@string/enterPort"
-        android:maxLines="1"
+        android:hint="@string/enterID"
         android:inputType="number"/>
+
+    <EditText android:id="@+id/enterPW"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:hint="@string/enterPW"
+        android:maxLines="1"
+        android:inputType="textPassword"/>
     <Button
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

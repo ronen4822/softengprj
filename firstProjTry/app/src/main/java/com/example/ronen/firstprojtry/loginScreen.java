@@ -23,13 +23,16 @@ public class loginScreen extends AppCompatActivity {
     public void sendMsg(View view)
     {
         Intent intent = new Intent(this, DisplayMessageActivity.class);
-        EditText edText=(EditText) findViewById(R.id.enterName);
+        EditText edText=(EditText) findViewById(R.id.enterID);
         String msg=edText.getText().toString();
-        intent.putExtra("USERNAME",msg);
-        edText=(EditText) findViewById(R.id.enterPort);
-        intent.putExtra("PORT",edText.getText().toString());
-        edText=(EditText) findViewById(R.id.enterIP);
-        intent.putExtra("IP",edText.getText().toString());
+        if(msg.length()!=9)
+        {
+            edText.setError("ID has to be exactly 9 characters");
+            return;
+        }
+        intent.putExtra("USERID",msg);
+        edText=(EditText) findViewById(R.id.enterPW);
+        intent.putExtra("PASSWORD",edText.getText().toString());
         startActivity(intent);
     }
 
