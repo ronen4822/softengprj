@@ -3,6 +3,7 @@ package com.example.ronen.firstprojtry;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
+import android.os.Environment;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -14,6 +15,10 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -21,7 +26,9 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.Socket;
-import java.net.UnknownHostException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+
 import android.widget.LinearLayout.LayoutParams;
 
 
@@ -34,9 +41,96 @@ public class DisplayMessageActivity extends AppCompatActivity {
     private ScrollView scrollLayout;
     private RelativeLayout relativeLayout;
     private Object mutex;
+    private InetAddress serverAdd=null;
+    private Calendar curCalendar=Calendar.getInstance();
+    private SimpleDateFormat formatting=new SimpleDateFormat("dd:MM:yyyy HH:mm:ss");
+    private String errorMsg;
+
+    private String logName="Group1"; //TODO: when adding multiple groups make the logName a variable in addToLog
 
     //check for heartbeats
-    protected void addMsg(String msg,int isMe)
+    private String getDate()
+    {
+        return formatting.format(curCalendar.getTime());
+    }
+    synchronized private void addToLog(int isMe, String lineToAdd)
+    {
+        String curTime=getDate();
+        try {
+            //TODO: check if file is too large
+            File logFile= new File(Environment.getExternalStorageDirectory(),"Groups");
+            if (!logFile.exists())
+            {
+                logFile.mkdirs();
+            }
+            //File filepath=new File(logFile,logName+".txt");
+            File filepath=new File(Environment.getExternalStorageDirectory()+File.separator+"Groups"+File.separator+logName+".txt");
+            if (!filepath.exists())
+            {
+                filepath.createNewFile();
+            }
+            FileWriter writer=new FileWriter(filepath,true);
+            String tmp=isMe+" [ "+curTime+" ]-"+lineToAdd;
+            writer.append(tmp);
+            writer.flush();
+            writer.close();
+        } catch (FileNotFoundException e) {
+            logError("Failed to open file!");
+        } catch (IOException e) {
+            logError("Failed to write to file!");
+        }
+    }
+    private void loadFromLog() {
+        try {
+            File logFile= new File(Environment.getExternalStorageDirectory(),"Groups"+File.separator+logName+".txt");
+            if (!logFile.exists())
+            {
+                return;
+            }
+            FileReader in=new FileReader(Environment.getExternalStorageDirectory()+File.separator+"Groups"+File.separator+logName+".txt");
+            BufferedReader file_buf=new BufferedReader(in);
+            String currentLine="";
+            int tmp;
+            int isString,isMe,counter;
+            isMe=-1;
+            counter=0;
+            isString=0;
+            while ((tmp=file_buf.read())!=-1)
+            {
+                if (tmp==194)
+                {
+                    addMsg(currentLine,isMe);
+                    counter=0;
+                    currentLine="";
+                    isString=0;
+                    isMe=-1;
+                    continue;
+                }
+                if (counter==0)
+                {
+                    isMe=tmp-48;
+                    counter++;
+                    continue;
+                }
+                if (tmp=='-' && isString==0)
+                {
+                    isString=1;
+                    continue;
+                }
+                if (isString==1)
+                {
+                    currentLine+=(char)tmp;
+                }
+            }
+            file_buf.close();
+        } catch (FileNotFoundException e) {
+            logError("Failed to open input file in load operation!");
+        } catch (IOException e) {
+            logError("Failed to close input file in load operation!");
+        }
+
+    }
+    private void addMsg(String msg,int isMe)
     {
         TextView textView1=new TextView(this);
         textView1.setText(msg);
@@ -82,7 +176,6 @@ public class DisplayMessageActivity extends AppCompatActivity {
         relLayout.setPadding(16,16,16,16);
         relativeLayout=relLayout;
         tmpView.addView(relLayout);
-
         Intent intent= getIntent();
         String id=intent.getStringExtra("USERID");
         String password=intent.getStringExtra("PASSWORD");
@@ -93,40 +186,28 @@ public class DisplayMessageActivity extends AppCompatActivity {
             readFromSoc.start();
         } catch (IOException e) {
             //display an error and move to previous activity
-            runOnUiThread(new Runnable() {
-                public void run() {
-                    new AlertDialog.Builder(DisplayMessageActivity.this)
-                            .setTitle("ERROR")
-                            .setMessage("Connection failed")
-                            .setCancelable(false)
-                            .setPositiveButton("ok", new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialog, int which) {
-                                    Intent intent = new Intent(getApplicationContext(), loginScreen.class);
-                                    startActivity(intent);
-                                }
-                            }).show();
-
-                }
-            });
-            return;
+            connError();
         }
     }
     public void sendMessage(View view)
     {
+
         EditText edText=(EditText) findViewById(R.id.msgHolder);
         String msg=edText.getText().toString();
         addMsg(name+":\r\n "+msg,1);
+        String msgToSend =name + ":\r\n " + msg + (char) 194;
+
+        addToLog(1,msgToSend);
 
         edText.setText(null);
-        MsgHandler sendMsg=new MsgHandler(name+":\r\n "+msg+(char)194);
+        MsgHandler sendMsg=new MsgHandler(msgToSend);
         Thread tmpThread=new Thread(sendMsg);
         tmpThread.start();
     }
-    public class MsgHandler implements Runnable
+    private class MsgHandler implements Runnable
     {
         private String msg;
-        public MsgHandler(String msg)
+        MsgHandler(String msg)
         {
             this.msg=msg;
         }
@@ -137,40 +218,60 @@ public class DisplayMessageActivity extends AppCompatActivity {
             out.flush();
         }
     }
-    public class MsgPrinter implements Runnable {
+    private void connError()
+    {
+        runOnUiThread(new Runnable() {
+            public void run() {
+                new AlertDialog.Builder(DisplayMessageActivity.this)
+                        .setTitle("ERROR")
+                        .setMessage("Connection failed")
+                        .setCancelable(false)
+                        .setPositiveButton("ok", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                Intent intent = new Intent(getApplicationContext(), loginScreen.class);
+                                startActivity(intent);
+                            }
+                        }).show();
+
+            }
+        });
+    }
+    private void logError(String msg)
+    {
+        errorMsg=msg;
+        runOnUiThread(new Runnable() {
+            public void run() {
+                new AlertDialog.Builder(DisplayMessageActivity.this)
+                        .setTitle("ERROR")
+                        .setMessage(errorMsg)
+                        .setCancelable(false)
+                        .setPositiveButton("ok", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                            }
+                        }).show();
+            }
+        });
+    }
+
+    private class MsgPrinter implements Runnable {
         private String id;
         private String pw;
         private String output;
         private String tmpString;
-        public MsgPrinter(String id,String pw) throws IOException {
+        MsgPrinter(String id,String pw) throws IOException {
             this.id=id;
             this.pw=pw;
             this.output="";
         }
         public void run() {
-            InetAddress serverAdd= null;
             try {
                 serverAdd= InetAddress.getByName("192.168.1.28");
-                if(serverAdd.isReachable(300)==false)
+                if(!serverAdd.isReachable(300))
                 {
-                    runOnUiThread(new Runnable() {
-                        public void run() {
-                            new AlertDialog.Builder(DisplayMessageActivity.this)
-                                    .setTitle("ERROR")
-                                    .setMessage("Connection failed")
-                                    .setCancelable(false)
-                                    .setPositiveButton("ok", new DialogInterface.OnClickListener() {
-                                        @Override
-                                        public void onClick(DialogInterface dialog, int which) {
-                                            Intent intent = new Intent(getApplicationContext(), loginScreen.class);
-                                            startActivity(intent);
-                                        }
-                                    }).show();
-
-                        }
-                    });
+                   connError();
                 }
-                //serverAdd = InetAddress.getByName("192.168.1.28");
                 clientSoc = new Socket(serverAdd, 55555);
                 reader = new BufferedReader(new InputStreamReader(
                         clientSoc.getInputStream()));
@@ -201,10 +302,13 @@ public class DisplayMessageActivity extends AppCompatActivity {
 
                         }
                     });
-                    return;
-
                 }
                 else {
+                    runOnUiThread(new Runnable() {
+                        public void run() {
+                            loadFromLog();
+                        }
+                    });
                     name = answer;
                     while (true) {
                         try {
@@ -214,37 +318,27 @@ public class DisplayMessageActivity extends AppCompatActivity {
                             while ((tmp = (char) reader.read()) != (char) weirdChar) {
                                 output += tmp;
                             }
-                            tmpString=output;
+                            synchronized (mutex) {
+                                tmpString = output;
+                            }
+                            runOnUiThread(new Runnable() {
+                            public void run() {
+                                synchronized (mutex) {
+                                    addToLog(0, tmpString);
+                                    addMsg(tmpString, 0);
+                                }
+
+                            }
+                            });
                         } catch (IOException e) {
                         }
-                        runOnUiThread(new Runnable() {
-                            public void run() {
-                                addMsg(tmpString, 0);
-                            }
-                        });
-
                     }
                 }
             } catch (IOException e) {
                 //display an error and move to previous activity
-                runOnUiThread(new Runnable() {
-                    public void run() {
-                        new AlertDialog.Builder(DisplayMessageActivity.this)
-                                .setTitle("ERROR")
-                                .setMessage("Connection failed")
-                                .setCancelable(false)
-                                .setPositiveButton("ok", new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialog, int which) {
-                                        Intent intent = new Intent(getApplicationContext(), loginScreen.class);
-                                        startActivity(intent);
-                                    }
-                                }).show();
-
-                    }
-                });
-                return;
+                connError();
             }
         }
     }
+
 }
