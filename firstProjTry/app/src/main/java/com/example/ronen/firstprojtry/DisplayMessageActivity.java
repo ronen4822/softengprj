@@ -92,6 +92,24 @@ public class DisplayMessageActivity extends AppCompatActivity {
             Thread readFromSoc=new Thread(sockReader);
             readFromSoc.start();
         } catch (IOException e) {
+            //display an error and move to previous activity
+            runOnUiThread(new Runnable() {
+                public void run() {
+                    new AlertDialog.Builder(DisplayMessageActivity.this)
+                            .setTitle("ERROR")
+                            .setMessage("Connection failed")
+                            .setCancelable(false)
+                            .setPositiveButton("ok", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    Intent intent = new Intent(getApplicationContext(), loginScreen.class);
+                                    startActivity(intent);
+                                }
+                            }).show();
+
+                }
+            });
+            return;
         }
     }
     public void sendMessage(View view)
@@ -132,7 +150,27 @@ public class DisplayMessageActivity extends AppCompatActivity {
         public void run() {
             InetAddress serverAdd= null;
             try {
-                serverAdd = InetAddress.getByName("192.168.1.28");
+                serverAdd= InetAddress.getByName("192.168.1.28");
+                if(serverAdd.isReachable(300)==false)
+                {
+                    runOnUiThread(new Runnable() {
+                        public void run() {
+                            new AlertDialog.Builder(DisplayMessageActivity.this)
+                                    .setTitle("ERROR")
+                                    .setMessage("Connection failed")
+                                    .setCancelable(false)
+                                    .setPositiveButton("ok", new DialogInterface.OnClickListener() {
+                                        @Override
+                                        public void onClick(DialogInterface dialog, int which) {
+                                            Intent intent = new Intent(getApplicationContext(), loginScreen.class);
+                                            startActivity(intent);
+                                        }
+                                    }).show();
+
+                        }
+                    });
+                }
+                //serverAdd = InetAddress.getByName("192.168.1.28");
                 clientSoc = new Socket(serverAdd, 55555);
                 reader = new BufferedReader(new InputStreamReader(
                         clientSoc.getInputStream()));
