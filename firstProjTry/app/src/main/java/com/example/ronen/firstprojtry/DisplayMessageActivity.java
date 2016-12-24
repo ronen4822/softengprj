@@ -53,7 +53,7 @@ public class DisplayMessageActivity extends AppCompatActivity {
     {
         return formatting.format(curCalendar.getTime());
     }
-    synchronized private void addToLog(int isMe, String lineToAdd)
+    synchronized private void addToLog(String lineToAdd)
     {
         String curTime=getDate();
         try {
@@ -70,7 +70,7 @@ public class DisplayMessageActivity extends AppCompatActivity {
                 filepath.createNewFile();
             }
             FileWriter writer=new FileWriter(filepath,true);
-            String tmp=isMe+" [ "+curTime+" ]-"+lineToAdd;
+            String tmp=" [ "+curTime+" ]-"+lineToAdd;
             writer.append(tmp);
             writer.flush();
             writer.close();
@@ -90,35 +90,45 @@ public class DisplayMessageActivity extends AppCompatActivity {
             FileReader in=new FileReader(Environment.getExternalStorageDirectory()+File.separator+"Groups"+File.separator+logName+".txt");
             BufferedReader file_buf=new BufferedReader(in);
             String currentLine="";
+            String thisName="";
             int tmp;
-            int isString,isMe,counter;
-            isMe=-1;
-            counter=0;
+            int isString,isMe,isName;
             isString=0;
+            isName=0;
             while ((tmp=file_buf.read())!=-1)
             {
                 if (tmp==194)
                 {
+                    if (thisName.equals(name))
+                    {
+                        isMe=1;
+                    }
+                    else
+                    {
+                        isMe=0;
+                    }
                     addMsg(currentLine,isMe);
-                    counter=0;
                     currentLine="";
+                    thisName="";
                     isString=0;
-                    isMe=-1;
-                    continue;
-                }
-                if (counter==0)
-                {
-                    isMe=tmp-48;
-                    counter++;
                     continue;
                 }
                 if (tmp=='-' && isString==0)
                 {
+                    isName=1;
                     isString=1;
                     continue;
                 }
+                if (isName==1 && (char)tmp==':')
+                {
+                    isName=0;
+                }
                 if (isString==1)
                 {
+                    if (isName==1)
+                    {
+                        thisName+=(char)tmp;
+                    }
                     currentLine+=(char)tmp;
                 }
             }
@@ -135,29 +145,31 @@ public class DisplayMessageActivity extends AppCompatActivity {
         TextView textView1=new TextView(this);
         textView1.setText(msg);
         RelativeLayout.LayoutParams llp = new RelativeLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+        llp.setMargins(0,10,0,10);
         if (prevTextId!=0)
         {
             llp.addRule(RelativeLayout.BELOW,prevTextId);
         }
         if (isMe==1)
         {
+            textView1.setBackgroundResource(R.drawable.rounded_corner);
             llp.addRule(RelativeLayout.ALIGN_PARENT_LEFT);
         }
         else
         {
+            textView1.setBackgroundResource(R.drawable.rounded_corner1);
             llp.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
         }
         textView1.setId(prevTextId+1);
         prevTextId++;
         textView1.setLayoutParams(llp);
-        textView1.setBackgroundResource(R.drawable.rounded_corner);
         textView1.setPadding(20,20,20,20);
         textView1.setTextColor(Color.rgb(0,0,51));
         relativeLayout.addView(textView1);
         scrollLayout.post(new Runnable() {
             @Override
             public void run() {
-                scrollLayout.scrollTo(0, scrollLayout.getBottom());
+                scrollLayout.fullScroll(ScrollView.FOCUS_DOWN);
             }
         });
     }
@@ -197,7 +209,7 @@ public class DisplayMessageActivity extends AppCompatActivity {
         addMsg(name+":\r\n "+msg,1);
         String msgToSend =name + ":\r\n " + msg + (char) 194;
 
-        addToLog(1,msgToSend);
+        addToLog(msgToSend);
 
         edText.setText(null);
         MsgHandler sendMsg=new MsgHandler(msgToSend);
@@ -324,7 +336,7 @@ public class DisplayMessageActivity extends AppCompatActivity {
                             runOnUiThread(new Runnable() {
                             public void run() {
                                 synchronized (mutex) {
-                                    addToLog(0, tmpString);
+                                    addToLog(tmpString);
                                     addMsg(tmpString, 0);
                                 }
 
