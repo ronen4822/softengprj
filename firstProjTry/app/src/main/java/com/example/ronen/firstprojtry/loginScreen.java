@@ -22,7 +22,7 @@ public class loginScreen extends AppCompatActivity {
     }
     public void sendMsg(View view)
     {
-        Intent intent = new Intent(this, DisplayMessageActivity.class);
+        Intent intent = new Intent(this, GroupList.class);
         EditText edText=(EditText) findViewById(R.id.enterID);
         String msg=edText.getText().toString();
         if(msg.length()!=9)
